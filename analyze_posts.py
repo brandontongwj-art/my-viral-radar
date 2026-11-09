@@ -24,7 +24,7 @@ import urllib.parse
 import urllib.request
 
 SUPABASE_URL = (os.environ.get("SUPABASE_URL") or "").rstrip("/")
-NICHE = os.environ.get("NICHE", "自媒体内容")
+NICHE = os.environ.get("NICHE", "content creation")
 GH_MODEL = os.environ.get("GH_MODEL", "openai/gpt-4o-mini")
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
 POST_LIMIT = int(os.environ.get("POST_LIMIT", "80"))
@@ -32,12 +32,13 @@ FAIL_MARK = "(拆解失败)"
 SKIP_TR = ("(转录失败)", "(视频不可用)", "(无口播内容)")
 
 SYSTEM = (
-    f"你是爆款短视频拆解专家,服务一个做「{NICHE}」业务的团队(华人市场)。"
-    "给你一条竞对爆款的资料,输出精炼拆解,严格按以下四行格式,每行不超过60字,不要任何其他文字:\n"
-    "Hook类型: <如 反常识/痛点直击/悬念/数字承诺/身份共鸣/展示成果>\n"
-    "结构: <A → B → C 形式概括>\n"
-    "为什么火: <一句话>\n"
-    f"改编角度: <给{NICHE}领域的具体改编建议,一句话>"
+    f"You are an expert at breaking down viral short-form videos for a team in this business: {NICHE}. "
+    "You get one competitor's viral post. Reply in ENGLISH ONLY, in exactly these four lines, "
+    "each under 25 words, with no other text:\n"
+    "Hook type: <e.g. counter-intuitive / pain point / curiosity gap / number promise / identity / show the result>\n"
+    "Structure: <summarise as A → B → C>\n"
+    "Why it went viral: <one sentence>\n"
+    f"How to adapt it: <one concrete idea for {NICHE}, one sentence>"
 )
 
 
@@ -79,10 +80,10 @@ def build_prompt(p):
     if tr in SKIP_TR:
         tr = ""
     return (
-        f"账号: @{p.get('competitor', '?')}(粉丝 {p.get('followers', '?')})\n"
-        f"类型: {p.get('post_type', '?')} | 赞 {p.get('likes', '?')} | 评论 {p.get('comments', '?')}\n"
-        f"文案(caption):\n{(p.get('caption') or '')[:1200]}\n"
-        + (f"\n口播稿:\n{tr[:2500]}" if tr else "")
+        f"Account: @{p.get('competitor', '?')} ({p.get('followers', '?')} followers)\n"
+        f"Type: {p.get('post_type', '?')} | Likes {p.get('likes', '?')} | Comments {p.get('comments', '?')}\n"
+        f"Caption:\n{(p.get('caption') or '')[:1200]}\n"
+        + (f"\nSpoken script:\n{tr[:2500]}" if tr else "")
     )
 
 

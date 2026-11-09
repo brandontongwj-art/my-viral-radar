@@ -25,9 +25,9 @@ SUPABASE_URL = (os.environ.get("SUPABASE_URL") or "").rstrip("/")
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")  # public key, baked into the page
 # Set on GitHub → Settings → Secrets and variables → Actions → Variables.
 # Falls back to sensible defaults so the page still builds before they're set.
-BRAND = os.environ.get("BRAND", "爆款雷达")
-SYNC_DAY = os.environ.get("SYNC_DAY", "每周")
-TRACKER_LABEL = {"IG": BRAND + " 竞对"}
+BRAND = os.environ.get("BRAND", "Viral Radar")
+SYNC_DAY = os.environ.get("SYNC_DAY", "Weekly")
+TRACKER_LABEL = {"IG": BRAND + " competitors"}
 STATUSES = ["未处理", "拍摄中", "已处理", "跳过"]
 
 # comment-bait CTA patterns — require an explicit gated keyword:
@@ -323,20 +323,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <h1>__BRAND__<small id="updated"></small></h1>
     </div>
     <div class="search"><svg class="ic"><use href="#i-search"/></svg>
-      <input id="fSearch" placeholder="搜文案 / hashtag / 账号"></div>
-    <select id="fTracker"><option value="">全部 Tracker</option></select>
-    <select id="fComp"><option value="">全部 Competitor</option></select>
+      <input id="fSearch" placeholder="Search caption / hashtag / account"></div>
+    <select id="fTracker"><option value="">All trackers</option></select>
+    <select id="fComp"><option value="">All competitors</option></select>
     <select id="fSort">
-      <option value="x">按 爆款倍数 (vs 自家平均)</option>
-      <option value="score">按 Viral Score</option>
-      <option value="er">按 Engagement Rate</option>
-      <option value="comments">按 Comments</option>
-      <option value="likes">按 Likes</option>
-      <option value="date">按 最新日期</option>
+      <option value="x">Sort: viral multiple (vs own average)</option>
+      <option value="score">Sort: viral score</option>
+      <option value="er">Sort: engagement rate</option>
+      <option value="comments">Sort: comments</option>
+      <option value="likes">Sort: likes</option>
+      <option value="date">Sort: newest</option>
     </select>
-    <button class="btn" id="fVideo"><svg class="ic"><use href="#i-video"/></svg>只看视频</button>
+    <button class="btn" id="fVideo"><svg class="ic"><use href="#i-video"/></svg>Videos only</button>
 
-    <a class="btn" href="team.html" target="_top" title="工作台"><svg class="ic"><use href="#i-users"/></svg>工作台</a>
+    <a class="btn" href="team.html" target="_top" title="Workspace"><svg class="ic"><use href="#i-users"/></svg>Workspace</a>
   </div>
   <div class="tabs" id="tabs"></div>
   <div class="chips" id="presets"></div>
@@ -344,10 +344,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </header>
 <main>
   <div class="grid" id="grid"></div>
-  <div class="empty" id="empty" style="display:none"><svg class="ic"><use href="#i-search"/></svg>没有符合条件的帖子</div>
-  <div class="more" id="moreWrap" style="display:none"><button id="moreBtn">载入更多</button></div>
+  <div class="empty" id="empty" style="display:none"><svg class="ic"><use href="#i-search"/></svg>No posts match these filters</div>
+  <div class="more" id="moreWrap" style="display:none"><button id="moreBtn">Load more</button></div>
 </main>
-<footer>数据来源 Supabase · __SYNC_DAY__自动更新 · 状态更改即时同步全团队 · 视频由 Instagram 官方 embed 播放</footer>
+<footer>Data: Supabase · Auto-updates __SYNC_DAY__ · Status changes sync to the whole team instantly · Videos play via official Instagram embed</footer>
 <div id="toast"></div>
 <script id="data" type="application/json">__DATA__</script>
 <script>
@@ -355,7 +355,9 @@ const DATA = JSON.parse(document.getElementById('data').textContent);
 const SUPA = '__SUPA_URL__';
 const ANON = '__SUPA_ANON__';
 const STATUSES = __STATUSES__;
-document.getElementById('updated').textContent = '更新于 __UPDATED__';
+const SL = {'全部':'All','未处理':'To review','拍摄中':'Filming','已处理':'Done','跳过':'Skipped'};
+const L = s => SL[s] || s;
+document.getElementById('updated').textContent = 'Updated __UPDATED__';
 const PAGE = 48;
 let shown = PAGE;
 let videoOnly = false;
@@ -373,10 +375,10 @@ DATA.forEach(d => {
   d.horse = d.followers > 0 && d.followers < 50000 && ((d.x || 0) >= 2 || d.score >= 10);
 });
 const PRESETS = [
-  { k: 'px', icon: 'trend', label: '真爆款 ×2+', f: d => (d.x || 0) >= 2 },
-  { k: 'pn', icon: 'star', label: '近7天', f: d => d.days !== null && d.days <= 7 },
-  { k: 'ph', icon: 'zap', label: '黑马', f: d => d.horse },
-  { k: 'pb', icon: 'magnet', label: '引流帖', f: d => d.bait },
+  { k: 'px', icon: 'trend', label: 'Real viral ×2+', f: d => (d.x || 0) >= 2 },
+  { k: 'pn', icon: 'star', label: 'Last 7 days', f: d => d.days !== null && d.days <= 7 },
+  { k: 'ph', icon: 'zap', label: 'Dark horse', f: d => d.horse },
+  { k: 'pb', icon: 'magnet', label: 'Comment-bait', f: d => d.bait },
 ];
 const presetOn = {};
 
@@ -421,7 +423,7 @@ function renderTabs() {
   ['全部', ...STATUSES].forEach(name => {
     const el = document.createElement('div');
     el.className = 'tab' + (curTab === name ? ' on' : '') + (name !== '全部' ? ' droppable' : '');
-    el.innerHTML = esc(name) + ' <span class="cnt">' + counts[name] + '</span>';
+    el.innerHTML = esc(L(name)) + ' <span class="cnt">' + counts[name] + '</span>';
     el.onclick = () => { curTab = name; shown = PAGE; render(); };
     if (name !== '全部') {
       el.ondragover = e => { if (dragRec) { e.preventDefault(); el.classList.add('over'); } };
@@ -461,9 +463,9 @@ async function setStatus(d, val) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     d.status = val;
     cacheStatus(d.id, val);
-    toast('✓ @' + d.competitor + ' 已移到「' + val + '」', true);
+    toast('✓ @' + d.competitor + ' moved to "' + L(val) + '"', true);
   } catch (e) {
-    toast('更新失败: ' + e.message + (String(e.message).includes('401') || String(e.message).includes('403') ? ' — 密钥无效?' : ''), false);
+    toast('Update failed: ' + e.message + (String(e.message).includes('401') || String(e.message).includes('403') ? ' — invalid key?' : ''), false);
   }
   render();
 }
@@ -486,7 +488,7 @@ function card(d, idx) {
   };
   const typeIcon = d.video ? 'video' : (d.type === 'Carousel' ? 'layers' : 'image');
   const days = d.days, horse = d.horse;
-  const ago = days === null ? '' : (days === 0 ? '今天' : days + '天前');
+  const ago = days === null ? '' : (days === 0 ? 'today' : days + 'd ago');
   const lines = (d.caption || '').split('\\n').map(l => l.trim()).filter(Boolean);
   const hook = lines[0] || '';
   const tr = (d.transcript && d.transcript !== '(转录失败)' && d.transcript !== '(无口播内容)') ? d.transcript : '';
@@ -494,54 +496,54 @@ function card(d, idx) {
     <div class="embed" data-pid="${d.id}"><div class="ph"><svg class="ic"><use href="#i-${typeIcon}"/></svg></div></div>
     <div class="meta">
       <div class="row1">
-        <span class="handle" title="拖到上方 tab 即可归类">${I('grip')}</span>
+        <span class="handle" title="Drag onto a tab above to sort it">${I('grip')}</span>
         <a class="who" href="https://www.instagram.com/${d.competitor}/" target="_blank">@${d.competitor}</a>
         <span class="badge">${d.type || '-'}</span>
-        ${days !== null && days <= 7 ? '<span class="badge bnew">' + I('star') + '新帖</span>' : ''}
-        ${horse ? '<span class="badge bhorse">' + I('zap') + '黑马</span>' : ''}
-        ${d.bait ? '<span class="badge bbait" title="「留言XX」引流打法 — 评论被引流放大,漏斗设计值得学">' + I('magnet') + '引流</span>' : ''}
+        ${days !== null && days <= 7 ? '<span class="badge bnew">' + I('star') + 'New</span>' : ''}
+        ${horse ? '<span class="badge bhorse">' + I('zap') + 'Dark horse</span>' : ''}
+        ${d.bait ? '<span class="badge bbait" title="Comment-keyword funnel — comments are inflated by the bait; study the funnel">' + I('magnet') + 'Comment-bait</span>' : ''}
         <span class="date" title="${d.date || ''}">${ago}</span>
       </div>
       <div class="nums">
         <span class="num hot" title="Viral Score">${I('flame')}<b>${d.score}</b></span>
-        ${(d.x || 0) >= 2 ? '<span class="num x" title="是自家平均热度的多少倍">' + I('trend') + '<b>×' + d.x + '</b></span>' : ''}
+        ${(d.x || 0) >= 2 ? '<span class="num x" title="How many times above this account&#39;s average">' + I('trend') + '<b>×' + d.x + '</b></span>' : ''}
         <span class="num er" title="Engagement Rate">${I('pct')}<b>${d.er}%</b></span>
-        <span class="num" title="Likes">${I('heart')}<b>${d.likes > 0 ? fmt(d.likes) : '隐藏'}</b></span>
+        <span class="num" title="Likes">${I('heart')}<b>${d.likes > 0 ? fmt(d.likes) : 'hidden'}</b></span>
         <span class="num" title="Comments">${I('msg')}<b>${fmt(d.comments)}</b></span>
         <span class="num" title="Followers">${I('users')}<b>${fmt(d.followers)}</b></span>
       </div>
       <div class="cap" onclick="this.classList.toggle('open')"></div>
       ${d.brk ? '<div class="ai" onclick="this.classList.toggle(&quot;open&quot;)"></div>' : ''}
-      <div class="srow"><label>状态</label><select class="status btn s${d.status}"></select>
-        <button class="abtn copy" title="复制完整文案">${I('copy')}文案</button>
-        ${tr ? '<button class="abtn mic" title="复制视频口播逐字稿">' + I('mic') + '口播</button>' : ''}
-        <button class="abtn brief" title="复制拍摄 Brief(数据+Hook+文案+口播稿)">${I('clip')}Brief</button>
-        <a class="abtn" href="${d.url}" target="_blank" title="打开 Instagram 原帖">${I('ext')}</a></div>
+      <div class="srow"><label>Status</label><select class="status btn s${d.status}"></select>
+        <button class="abtn copy" title="Copy full caption">${I('copy')}Caption</button>
+        ${tr ? '<button class="abtn mic" title="Copy the spoken script">' + I('mic') + 'Script</button>' : ''}
+        <button class="abtn brief" title="Copy a filming brief (stats + hook + caption + script)">${I('clip')}Brief</button>
+        <a class="abtn" href="${d.url}" target="_blank" title="Open the original Instagram post">${I('ext')}</a></div>
     </div>`;
   const capEl = el.querySelector('.cap');
   const restTxt = lines.slice(1).join('\\n');
   capEl.innerHTML = hook ? '<b>' + esc(hook) + '</b>' + (restTxt ? '<br>' + esc(restTxt).replace(/\\n/g, '<br>') : '') : '';
   const aiEl = el.querySelector('.ai');
-  if (aiEl) aiEl.innerHTML = '<b>💡 AI 拆解</b><br>' + esc(d.brk).split(String.fromCharCode(10)).join('<br>');
+  if (aiEl) aiEl.innerHTML = '<b>💡 AI breakdown</b><br>' + esc(d.brk).split(String.fromCharCode(10)).join('<br>');
   const sel = el.querySelector('.status');
-  STATUSES.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
+  STATUSES.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = L(s); sel.appendChild(o); });
   sel.value = d.status;
   sel.onchange = () => setStatus(d, sel.value);
   el.querySelector('.copy').onclick = () =>
-    navigator.clipboard.writeText(d.caption || '').then(() => toast('✓ 文案已复制', true));
+    navigator.clipboard.writeText(d.caption || '').then(() => toast('✓ Caption copied', true));
   const micBtn = el.querySelector('.mic');
   if (micBtn) micBtn.onclick = () =>
-    navigator.clipboard.writeText(tr).then(() => toast('✓ 口播稿已复制', true));
+    navigator.clipboard.writeText(tr).then(() => toast('✓ Script copied', true));
   el.querySelector('.brief').onclick = () => {
     const NL = String.fromCharCode(10);
-    const parts = ['🎬 爆款参考 @' + d.competitor + ((d.x || 0) >= 2 ? '(自家平均 ×' + d.x + ')' : ''),
-      '📊 🔥' + d.score + ' | ER ' + d.er + '% | ❤️ ' + (d.likes > 0 ? fmt(d.likes) : '隐藏') +
+    const parts = ['🎬 Viral reference @' + d.competitor + ((d.x || 0) >= 2 ? ' (×' + d.x + ' own average)' : ''),
+      '📊 🔥' + d.score + ' | ER ' + d.er + '% | ❤️ ' + (d.likes > 0 ? fmt(d.likes) : 'hidden') +
       ' | 💬 ' + fmt(d.comments) + ' | 👥 ' + fmt(d.followers) + (ago ? ' | ' + ago : ''),
       '🔗 ' + d.url, '✍️ Hook: ' + hook];
-    if (d.brk) parts.push('——— AI 拆解 ———', d.brk);
-    if (tr) parts.push('——— 口播稿 ———', tr);
-    parts.push('——— 完整文案 ———', d.caption || '');
-    navigator.clipboard.writeText(parts.join(NL)).then(() => toast('✓ Brief 已复制,可直接发给拍摄/剪辑', true));
+    if (d.brk) parts.push('——— AI breakdown ———', d.brk);
+    if (tr) parts.push('——— Spoken script ———', tr);
+    parts.push('——— Full caption ———', d.caption || '');
+    navigator.clipboard.writeText(parts.join(NL)).then(() => toast('✓ Brief copied — send it straight to filming/editing', true));
   };
   io.observe(el.querySelector('.embed'));
   return el;
@@ -596,7 +598,7 @@ $('fVideo').onclick = () => { videoOnly = !videoOnly; $('fVideo').classList.togg
 $('moreBtn').onclick = () => { shown += PAGE; render(); };
 
 // preset quick filters
-$('presets').innerHTML = '<span class="lbl">快筛</span>';
+$('presets').innerHTML = '<span class="lbl">Quick filters</span>';
 PRESETS.forEach(p => {
   const c = document.createElement('span'); c.className = 'chip2';
   c.innerHTML = I(p.icon) + esc(p.label);
@@ -606,7 +608,7 @@ PRESETS.forEach(p => {
 
 // trending hashtags among outlier posts
 if (TRENDS.length) {
-  $('trends').innerHTML = '<span class="lbl">爆款热词</span>';
+  $('trends').innerHTML = '<span class="lbl">Trending tags</span>';
   TRENDS.forEach(([tag, n]) => {
     const c = document.createElement('span'); c.className = 'chip2';
     c.textContent = '#' + tag + ' ' + n;
@@ -629,7 +631,7 @@ TEAM_TEMPLATE = """<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>工作台</title>
+<title>Workspace</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -771,15 +773,15 @@ TEAM_TEMPLATE = """<!DOCTYPE html>
   <div class="hrow">
     <div class="brand">
       <div class="mark"><svg class="ic"><use href="#i-flame"/></svg></div>
-      <h1>工作台<small id="updated"></small></h1>
+      <h1>Workspace<small id="updated"></small></h1>
     </div>
-    <div class="me" id="meBtn" title="点击修改身份">
-      <svg class="ic"><use href="#i-user"/></svg><span id="meLabel">未登记</span>
+    <div class="me" id="meBtn" title="Click to change who you are">
+      <svg class="ic"><use href="#i-user"/></svg><span id="meLabel">Not set</span>
     </div>
   </div>
   <nav>
-    <div class="ntab on" data-p="work"><svg class="ic"><use href="#i-clock"/></svg>今日工作</div>
-    <div class="ntab" data-p="radar"><svg class="ic"><use href="#i-radar"/></svg>爆款雷达</div>
+    <div class="ntab on" data-p="work"><svg class="ic"><use href="#i-clock"/></svg>Today's work</div>
+    <div class="ntab" data-p="radar"><svg class="ic"><use href="#i-radar"/></svg>Viral radar</div>
     <div class="ntab" data-p="sop"><svg class="ic"><use href="#i-book"/></svg>SOP</div>
   </nav>
 </header>
@@ -787,100 +789,100 @@ TEAM_TEMPLATE = """<!DOCTYPE html>
   <div class="page on" id="p-work">
     <div id="mission"></div>
     <div class="stats">
-      <div class="stat pd"><div class="v" id="stPending">–</div><div class="l">未处理(待挑选)</div></div>
-      <div class="stat sh"><div class="v" id="stShoot">–</div><div class="l">拍摄中</div></div>
-      <div class="stat dn"><div class="v" id="stDone">–</div><div class="l">已处理</div></div>
+      <div class="stat pd"><div class="v" id="stPending">–</div><div class="l">To review (to pick)</div></div>
+      <div class="stat sh"><div class="v" id="stShoot">–</div><div class="l">Filming</div></div>
+      <div class="stat dn"><div class="v" id="stDone">–</div><div class="l">Done</div></div>
     </div>
     <section id="secShoot">
-      <h2><svg class="ic"><use href="#i-video"/></svg>拍摄中队列<small>做完一条,点「完成」</small></h2>
+      <h2><svg class="ic"><use href="#i-video"/></svg>Filming queue<small>Finished one? Click "Done"</small></h2>
       <div id="shootList"></div>
     </section>
     <section id="secPick">
-      <h2><svg class="ic"><use href="#i-flame"/></svg>本周待挑选爆款 Top 8<small>看中就点「选中拍摄」,细看去爆款雷达</small></h2>
+      <h2><svg class="ic"><use href="#i-flame"/></svg>This week's top 8 to pick<small>Like one? Click "Film this". Open the radar for details</small></h2>
       <div id="pickList"></div>
     </section>
   </div>
   <div class="page" id="p-radar"><div id="radarWrap"></div></div>
   <div class="page sop" id="p-sop">
     <section>
-      <h3><svg class="ic"><use href="#i-flame"/></svg>SOP-01 · Marketer 每周选题流程(周一,约30分钟)</h3>
+      <h3><svg class="ic"><use href="#i-flame"/></svg>SOP-01 · Weekly topic picking (Monday, ~30 min)</h3>
       <ol>
-        <li>打开<b>爆款雷达</b>,点快筛「<b>真爆款 ×2+</b>」+「<b>近7天</b>」</li>
-        <li>看「爆款热词」确认本周主题方向(热词越多的主题越优先)</li>
-        <li>挑 <b>3–5 条</b>适合改编的。标准:话题跟我们相关 / Hook 可复制 / 我们拍得出来</li>
-        <li>每条点「<b>Brief</b>」复制 → 发到拍摄群</li>
-        <li>把选中的卡片<b>拖到「拍摄中」</b></li>
-        <li>明显不适合的拖「跳过」,保持未处理越少越好</li>
+        <li>Open the <b>viral radar</b> and turn on the quick filters "<b>Real viral ×2+</b>" + "<b>Last 7 days</b>"</li>
+        <li>Check "Trending tags" to pick this week's theme (more tags = higher priority)</li>
+        <li>Pick <b>3–5 posts</b> to adapt. Rule: relevant topic / copyable hook / we can actually film it</li>
+        <li>Click "<b>Brief</b>" on each to copy it → send to your filming notes</li>
+        <li><b>Drag</b> the chosen cards to <b>"Filming"</b></li>
+        <li>Drag clear misfits to "Skipped". Keep "To review" small</li>
       </ol>
     </section>
     <section>
-      <h3><svg class="ic"><use href="#i-video"/></svg>SOP-02 · Content Creator 拍摄改编流程(每条 ≤1天)</h3>
+      <h3><svg class="ic"><use href="#i-video"/></svg>SOP-02 · Filming and adapting (≤1 day per post)</h3>
       <ol>
-        <li>打开工作台「<b>今日工作</b>」,看拍摄中队列,从最旧的开始</li>
-        <li>打开原帖看 <b>3 遍</b>:第1遍看整体 / 第2遍拆 Hook(前3秒为什么让人停下) / 第3遍记结构(几个镜头、什么节奏)</li>
-        <li><b>改编不照抄</b>:换成我们的案例、口吻、行业。保留结构,替换内容</li>
-        <li>拍摄 → 剪辑。<b>前3秒必须有钩子</b>,字幕开头即出</li>
-        <li>发布后回到工作台,该条点「<b>完成</b>」</li>
+        <li>Open "<b>Today's work</b>", check the filming queue, start with the oldest</li>
+        <li>Watch the original <b>3 times</b>: 1st for the whole / 2nd for the hook (why the first 3 seconds stop people) / 3rd for structure (how many shots, what pace)</li>
+        <li><b>Adapt, don't copy</b>: use your own cases, voice and industry. Keep the structure, swap the content</li>
+        <li>Film → edit. <b>Hook in the first 3 seconds</b>, captions from the first frame</li>
+        <li>After posting, come back and click "<b>Done</b>"</li>
       </ol>
     </section>
     <section>
-      <h3><svg class="ic"><use href="#i-book"/></svg>SOP-03 · 状态定义(团队统一语言)</h3>
+      <h3><svg class="ic"><use href="#i-book"/></svg>SOP-03 · What each status means</h3>
       <table>
-        <tr><th>状态</th><th>意思</th><th>谁负责改</th></tr>
-        <tr><td>未处理</td><td>还没人筛选过</td><td>Marketer 每周清理</td></tr>
-        <tr><td>拍摄中</td><td>已选中,正在改编/拍摄/剪辑</td><td>Marketer 选中时拖入</td></tr>
-        <tr><td>已处理</td><td>已发布或已完成改编</td><td>Creator 完成时点</td></tr>
-        <tr><td>跳过</td><td>不适合我们,不再考虑</td><td>任何人</td></tr>
+        <tr><th>Status</th><th>Meaning</th><th>Who changes it</th></tr>
+        <tr><td>To review</td><td>Nobody has looked at it yet</td><td>Cleared weekly</td></tr>
+        <tr><td>Filming</td><td>Chosen; being adapted, filmed or edited</td><td>Dragged in when picked</td></tr>
+        <tr><td>Done</td><td>Posted or adaptation finished</td><td>Clicked when finished</td></tr>
+        <tr><td>Skipped</td><td>Not a fit, won't use</td><td>Anyone</td></tr>
       </table>
     </section>
     <section>
-      <h3><svg class="ic"><use href="#i-radar"/></svg>SOP-04 · 看到「引流」标签的帖子怎么学</h3>
-      <p>带「引流」标的帖子,重点<b>不是内容,是漏斗</b>。记录三件事:</p>
+      <h3><svg class="ic"><use href="#i-radar"/></svg>SOP-04 · How to learn from "Comment-bait" posts</h3>
+      <p>For posts tagged "Comment-bait", the lesson is <b>the funnel, not the content</b>. Note three things:</p>
       <ol>
-        <li>留言<b>关键词</b>是什么?(例:留言「Start」)</li>
-        <li>送的<b>诱饵</b>是什么?(模板 / 课程 / 清单)</li>
-        <li>之后导去<b>哪里</b>?(DM 自动回复 → 链接 → 报名页)</li>
+        <li>What's the comment <b>keyword</b>? (e.g. comment "START")</li>
+        <li>What's the <b>freebie</b>? (template / course / checklist)</li>
+        <li>Where does it <b>lead</b>? (DM auto-reply → link → sign-up page)</li>
       </ol>
-      <p>好的打法直接抄结构,用我们的 GHL / ManyChat 实现。</p>
+      <p>Copy good funnels' structure and rebuild them with your own DM auto-replies.</p>
     </section>
     <section>
-      <h3><svg class="ic"><use href="#i-user"/></svg>SOP-05 · 竞对名单管理(发现好账号就加进来)</h3>
+      <h3><svg class="ic"><use href="#i-user"/></svg>SOP-05 · Managing the competitor list</h3>
       <ol>
-        <li>打开 Supabase「<b>competitors</b>」表,加一行</li>
-        <li><b>Username</b>:贴账号名或 IG <b>主页</b>链接都行(带 ?igsh= 参数没关系;不要贴帖子链接)</li>
-        <li><b>Tracker</b>:选 IG Competitors 或 AI Competitors</li>
-        <li><b>Active</b>:打勾✅ — <b>没勾不会抓</b></li>
-        <li>每周一自动生效;停止追踪 = 取消勾,不用删行</li>
+        <li>Open the Supabase "<b>competitors</b>" table and add a row</li>
+        <li><b>Username</b>: the account name or IG <b>profile</b> link (an ?igsh= ending is fine; not a post link)</li>
+        <li><b>Tracker</b>: IG</li>
+        <li><b>Active</b>: tick ✅ — <b>unticked accounts are not scraped</b></li>
+        <li>Takes effect next Monday. To stop tracking, untick it — no need to delete the row</li>
       </ol>
-      <p>加账号的标准:跟我们领域相关 / 内容有爆款相 / 值得学。发现雷达里某账号长期没爆款,把它 Active 取消,腾出额度换新的。</p>
+      <p>Add accounts that are relevant, often go viral and are worth learning from. If an account never shows up as viral, untick Active to save Apify credit for a better one.</p>
     </section>
     <section>
-      <h3><svg class="ic"><use href="#i-user"/></svg>SOP-06 · 第一次设置 & 常见问题</h3>
+      <h3><svg class="ic"><use href="#i-user"/></svg>SOP-06 · First-time setup & FAQ</h3>
       <ol>
-        <li><b>登记身份:</b>第一次打开工作台会弹「你是谁」→ 输名字、选角色。这决定你看到的任务卡和排版</li>
-        <li><b>直接改状态:</b>雷达里把卡片拖到上方分类,或用卡片下拉选。看到绿色 ✓ 就成了。<b>不需要输任何密钥</b> —— 这套系统天生只允许改状态,改不了别的数据,所以安全无需登录</li>
+        <li><b>Who are you:</b> the first time you open the workspace it asks your name and role. That decides which task card you see</li>
+        <li><b>Change a status:</b> drag a card onto a tab in the radar, or use the card's dropdown. A green ✓ means it worked. <b>No key needed</b> — the page can only change the status column, nothing else, so no login is required</li>
       </ol>
-      <p><b>常见问题:</b></p>
+      <p><b>FAQ:</b></p>
       <table>
-        <tr><th>现象</th><th>原因</th><th>解决</th></tr>
-        <tr><td>改了状态没反应 / 报错</td><td>网络断了,或页面是旧版</td><td>刷新页面(Ctrl+Shift+R)再试</td></tr>
-        <tr><td>队友改的状态我看不到</td><td>页面最多 10 分钟同步一次</td><td>刷新页面即可;自己的改动是即时的</td></tr>
-        <tr><td>网页打不开 / 数据是空的</td><td>每周自动更新那天可能还在跑</td><td>等 1 小时后再开;还不行找老板看 GitHub Actions</td></tr>
+        <tr><th>Problem</th><th>Cause</th><th>Fix</th></tr>
+        <tr><td>Status change does nothing / errors</td><td>Offline, or an old version of the page</td><td>Hard refresh (Cmd+Shift+R) and retry</td></tr>
+        <tr><td>Can't see a teammate's change</td><td>The page syncs every 10 min at most</td><td>Refresh; your own changes are instant</td></tr>
+        <tr><td>Page won't open / no data</td><td>The weekly update may still be running</td><td>Wait an hour; if still broken, check GitHub Actions</td></tr>
       </table>
-      <p>状态存在云端(Supabase),换电脑、关机都不会丢,全团队实时共享。</p>
+      <p>Statuses are saved in the cloud (Supabase), so they survive a new computer or a shutdown and are shared with your team.</p>
     </section>
   </div>
 </main>
 <div id="overlay"><div class="obox">
-  <h2>👋 你是谁?</h2>
-  <p>登记一次,方便团队知道是谁在操作。</p>
-  <input id="oName" placeholder="你的名字" maxlength="20">
+  <h2>👋 Who are you?</h2>
+  <p>Set this once so your team knows who did what.</p>
+  <input id="oName" placeholder="Your name" maxlength="20">
   <select id="oRole">
-    <option value="Marketer">Marketer(选题/投放)</option>
-    <option value="Content Creator">Content Creator(拍摄/剪辑)</option>
+    <option value="Marketer">Marketer (picks topics / ads)</option>
+    <option value="Content Creator">Content Creator (films / edits)</option>
     <option value="Boss">Boss</option>
   </select>
-  <button id="oSave">进入工作台</button>
+  <button id="oSave">Enter workspace</button>
 </div></div>
 <div id="toast"></div>
 <script id="data" type="application/json">__DATA__</script>
@@ -888,14 +890,16 @@ TEAM_TEMPLATE = """<!DOCTYPE html>
 const DATA = JSON.parse(document.getElementById('data').textContent);
 const SUPA = '__SUPA_URL__';
 const ANON = '__SUPA_ANON__';
-document.getElementById('updated').textContent = '数据更新于 __UPDATED__';
+const SL = {'全部':'All','未处理':'To review','拍摄中':'Filming','已处理':'Done','跳过':'Skipped'};
+const L = s => SL[s] || s;
+document.getElementById('updated').textContent = 'Data updated __UPDATED__';
 
 const $ = id => document.getElementById(id);
 const I = n => '<svg class="ic"><use href="#i-' + n + '"/></svg>';
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n);
 const getKey = () => ANON;  // anon key is baked in — safe, can only change status
-const firstLine = c => ((c || '').split('\\n').map(l => l.trim()).filter(Boolean)[0] || '(无文案)');
+const firstLine = c => ((c || '').split('\\n').map(l => l.trim()).filter(Boolean)[0] || '(no caption)');
 const byRec = {}; DATA.forEach(d => byRec[d.id] = d);
 
 function toast(msg, ok) {
@@ -914,15 +918,15 @@ function renderMission() {
   const done = DATA.filter(d => d.status === '已处理').length;
   const m = $('mission');
   if (role === 'Marketer') {
-    m.innerHTML = '<div class="mt">' + I('flame') + esc(name) + ',任务:从待挑选里选出值得拍的</div>'
-      + '<div class="md">待挑选 <b>' + pend + '</b> 条(其中真爆款 ×2+ 有 <b>' + hot + '</b> 条)'
-      + ' · 从下面清单直接选,或去雷达细看</div>';
+    m.innerHTML = '<div class="mt">' + I('flame') + esc(name) + ', your task: pick the posts worth filming</div>'
+      + '<div class="md">To review: <b>' + pend + '</b> (real viral ×2+: <b>' + hot + '</b>)'
+      + ' · pick from the list below, or open the radar</div>';
   } else if (role === 'Content Creator') {
-    m.innerHTML = '<div class="mt">' + I('video') + esc(name) + ',任务:清空拍摄中队列</div>'
-      + '<div class="md">队列还有 <b>' + queue + '</b> 条待做 · 已完成共 <b>' + done + '</b> 条</div>';
+    m.innerHTML = '<div class="mt">' + I('video') + esc(name) + ', your task: clear the filming queue</div>'
+      + '<div class="md">In queue: <b>' + queue + '</b> · Done so far: <b>' + done + '</b></div>';
   } else {
-    m.innerHTML = '<div class="mt">' + I('flame') + '团队概览</div>'
-      + '<div class="md">待挑选 <b>' + pend + '</b> 条 · 拍摄中 <b>' + queue + '</b> 条 · 已完成 <b>' + done + '</b> 条</div>';
+    m.innerHTML = '<div class="mt">' + I('flame') + 'Team overview</div>'
+      + '<div class="md">To review <b>' + pend + '</b> · Filming <b>' + queue + '</b> · Done <b>' + done + '</b></div>';
   }
 }
 
@@ -938,7 +942,7 @@ function orderSections() {
 // ---- identity ----
 function meLabel() {
   const n = localStorage.getItem('tm_name'), r = localStorage.getItem('tm_role');
-  $('meLabel').innerHTML = n ? '<b>' + esc(n) + '</b>&nbsp;· ' + esc(r || '') : '未登记';
+  $('meLabel').innerHTML = n ? '<b>' + esc(n) + '</b>&nbsp;· ' + esc(r || '') : 'Not set';
 }
 function showOverlay() {
   $('oName').value = localStorage.getItem('tm_name') || '';
@@ -978,9 +982,9 @@ async function setStatus(d, val) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     d.status = val;
     cacheStatus(d.id, val);
-    toast('✓ @' + d.competitor + ' → ' + val, true);
+    toast('✓ @' + d.competitor + ' → ' + L(val), true);
   } catch (e) {
-    toast('失败: ' + e.message, false);
+    toast('Failed: ' + e.message, false);
   }
   renderWork();
 }
@@ -1000,14 +1004,14 @@ function renderWork() {
 
   // shooting queue
   const sl = $('shootList'); sl.innerHTML = '';
-  if (!shoot.length) sl.innerHTML = '<div class="none">队列是空的 — Marketer 去爆款雷达挑几条拖进「拍摄中」</div>';
+  if (!shoot.length) sl.innerHTML = '<div class="none">Queue is empty — pick a few in the radar and drag them to "Filming"</div>';
   shoot.forEach(d => {
     const r = document.createElement('div'); r.className = 'row';
     r.innerHTML = '<a class="who2" href="https://www.instagram.com/' + d.competitor + '/" target="_blank">@' + esc(d.competitor) + '</a>'
       + ((d.x || 0) >= 2 ? '<span class="xb">×' + d.x + '</span>' : '')
       + '<span class="hookline">' + esc(firstLine(d.caption)) + '</span>'
-      + '<a class="pill" href="' + d.url + '" target="_blank">' + I('ext') + '原帖</a>'
-      + pillBtn('ok', 'check', '完成') + pillBtn('bad', 'x', '退回');
+      + '<a class="pill" href="' + d.url + '" target="_blank">' + I('ext') + 'Original</a>'
+      + pillBtn('ok', 'check', 'Done') + pillBtn('bad', 'x', 'Send back');
     const btns = r.querySelectorAll('button');
     btns[0].onclick = () => setStatus(d, '已处理');
     btns[1].onclick = () => setStatus(d, '未处理');
@@ -1017,15 +1021,15 @@ function renderWork() {
   // picks
   const picks = pend.filter(d => (d.x || 0) >= 2).sort((a, b) => (b.x || 0) - (a.x || 0)).slice(0, 8);
   const pl = $('pickList'); pl.innerHTML = '';
-  if (!picks.length) pl.innerHTML = '<div class="none">暂时没有 ×2 以上的未处理爆款 — 等周一自动抓新数据</div>';
+  if (!picks.length) pl.innerHTML = '<div class="none">No ×2+ posts waiting — new data arrives Monday</div>';
   picks.forEach(d => {
     const r = document.createElement('div'); r.className = 'row';
     r.innerHTML = '<span class="xb">×' + d.x + '</span>'
       + '<a class="who2" href="https://www.instagram.com/' + d.competitor + '/" target="_blank">@' + esc(d.competitor) + '</a>'
       + '<span class="hookline">' + esc(firstLine(d.caption))
       + '<small>🔥' + d.score + ' · ER ' + d.er + '% · 💬' + fmt(d.comments) + '</small></span>'
-      + '<a class="pill" href="' + d.url + '" target="_blank">' + I('ext') + '原帖</a>'
-      + pillBtn('ok', 'video', '选中拍摄') + pillBtn('bad', 'x', '跳过');
+      + '<a class="pill" href="' + d.url + '" target="_blank">' + I('ext') + 'Original</a>'
+      + pillBtn('ok', 'video', 'Film this') + pillBtn('bad', 'x', 'Skip');
     const btns = r.querySelectorAll('button');
     btns[0].onclick = () => setStatus(d, '拍摄中');
     btns[1].onclick = () => setStatus(d, '跳过');
